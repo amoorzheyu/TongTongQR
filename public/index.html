@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>通通签到码</title>
+  <style>
+    :root {
+      --white: hsl(0, 0%, 100%);
+      --black: hsl(240, 15%, 9%);
+      --paragraph: hsl(0, 0%, 83%);
+      --primary: hsl(266, 92%, 58%);
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0a0a0a;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 400px;
+      background-color: var(--black);
+      background-image:
+        radial-gradient(at 88% 40%, var(--black) 0px, transparent 85%),
+        radial-gradient(at 49% 30%, var(--black) 0px, transparent 85%),
+        radial-gradient(at 14% 26%, var(--black) 0px, transparent 85%),
+        radial-gradient(at 0% 64%, hsl(263, 93%, 56%) 0px, transparent 85%),
+        radial-gradient(at 41% 94%, hsl(284, 100%, 84%) 0px, transparent 85%),
+        radial-gradient(at 100% 99%, hsl(306, 100%, 57%) 0px, transparent 85%);
+      border-radius: 1rem;
+      box-shadow: 0px -16px 24px 0px rgba(255, 255, 255, 0.15) inset;
+      text-align: center;
+      margin: 1rem;
+    }
+
+    .card_title {
+      font-size: 1.3rem;
+      color: var(--white);
+      font-weight: bold;
+    }
+
+    .status {
+      font-size: 0.9rem;
+      color: var(--paragraph);
+      font-style: italic;
+      word-break: break-word;
+      max-width: 90%;
+    }
+
+    #canvasPreview {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
+      object-fit: contain;
+      background: white;
+      padding: 12px;
+      margin: 0 auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: opacity 0.3s ease;
+    }
+
+    .placeholder {
+      animation: pulse 1.2s infinite ease-in-out;
+      filter: grayscale(70%);
+      opacity: 0.6;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
+    .button {
+      cursor: pointer;
+      margin-top: 1rem;
+      padding: 0.8rem 1.6rem;
+      background-image: linear-gradient(90deg, #5e3aee, #c56bf0);
+      border: none;
+      border-radius: 9999px;
+      color: white;
+      font-size: 1rem;
+      box-shadow: inset 0 -2px 25px -4px var(--white);
+      transition: transform 0.2s ease;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .button:hover {
+      transform: scale(1.03);
+    }
+
+.popup {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 30, 0.95);
+  color: #ffecb3;
+  padding: 1.2rem 2rem;
+  border-radius: 1rem;
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  animation: fadeInOut 2.5s ease forwards;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  30% {
+    transform: translateX(-50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+  }
+}
+
+
+    @media (max-width: 400px) {
+      .card {
+        padding: 1rem;
+        border-radius: 0;
+      }
+      .card_title {
+        font-size: 1.1rem;
+      }
+      .button {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card_title">通通签到码</div>
+    <img
+      id="canvasPreview"
+      class="placeholder"
+      src="https://dummyimage.com/300x300/ffffff/aaaaaa.png&text=Wait for the QR code..."
+      alt="等待图像"
+    />
+    <div class="status" id="status">⏳ 等待连接 WebSocket...</div>
+    <button class="button" onclick="location.reload()">刷新连接</button>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const previewEl = document.getElementById('canvasPreview');
+
+    const ws = new WebSocket(`wss://tongtongtong.21wb.com/ws/`);
+    ws.binaryType = 'blob';
+
+    ws.onopen = () => {
+      console.log('[客户端] WebSocket 连接成功');
+      statusEl.textContent = '✅ WebSocket 已连接，等待图像推送中...';
+    };
+
+    ws.onmessage = (e) => {
+      if (e.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          previewEl.src = reader.result;
+          previewEl.classList.remove('placeholder');
+          statusEl.textContent = `🖼️ 已接收图像（${Math.round(reader.result.length / 1024)} KB）`;
+          showPopup('就是现在');
+        };
+        reader.readAsDataURL(e.data);
+      }
+    };
+
+    ws.onclose = () => {
+      console.warn('[客户端] WebSocket 连接关闭');
+      statusEl.textContent = '⚠️ WebSocket 连接已关闭';
+    };
+
+    // ✅ 弹出提示函数
+    function showPopup(text) {
+      const popup = document.createElement('div');
+      popup.className = 'popup';
+      popup.textContent = text;
+      document.body.appendChild(popup);
+      setTimeout(() => {
+        popup.remove();
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
